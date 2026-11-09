@@ -1,0 +1,45 @@
+name: Deploy Firebase Rules
+
+# Deploys Firestore & Storage security rules + indexes when they change on main.
+# Requires repo secret FIREBASE_TOKEN (from `firebase login:ci`) and the
+# FIREBASE_PROJECT_ID variable. Safe no-op if secrets are absent.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "firebase/**"
+      - "firebase.json"
+  workflow_dispatch:
+
+jobs:
+  deploy-rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Guard — require FIREBASE_TOKEN
+        id: guard
+        run: |
+          if [ -z "${{ secrets.FIREBASE_TOKEN }}" ]; then
+            echo "FIREBASE_TOKEN not set — skipping rules deploy."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node
+        if: steps.guard.outputs.skip == 'false'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Deploy rules & indexes
+        if: steps.guard.outputs.skip == 'false'
+        run: |
+          npm i -g firebase-tools
+          firebase deploy \
+            --only firestore:rules,firestore:indexes,storage \
+            --project "${{ vars.FIREBASE_PROJECT_ID }}" \
+            --token "${{ secrets.FIREBASE_TOKEN }}" \
+            --non-interactive

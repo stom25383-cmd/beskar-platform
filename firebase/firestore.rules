@@ -1,0 +1,13 @@
+rules_version = '2';
+
+// BESKAR uses server-side Next.js APIs + Firebase Admin SDK as its data boundary.
+// The browser is intentionally given no direct Firestore write/read path. This
+// avoids a second authorization model that could drift from the application
+// session/authorization layer. Admin SDK operations bypass these rules.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

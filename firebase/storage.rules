@@ -1,0 +1,12 @@
+rules_version = '2';
+
+// All Storage access is mediated by the server. APKs remain private and public
+// media is served through controlled application URLs/objects as configured by
+// the server. Firebase Admin SDK bypasses these rules.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
