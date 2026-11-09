@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiGet } from "@/lib/client/api";
+import { apiGet, apiSend } from "@/lib/client/api";
 import { PageHeader, Card } from "@/components/admin/ui";
 import { Spinner } from "@/components/ui";
-import { useState } from "react";
 import type { AuditEntry } from "@/lib/types";
 
 export default function AdminSystem() {
