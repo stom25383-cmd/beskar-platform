@@ -57,6 +57,7 @@ function withLock<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 let cache: DBShape | null = null;
+let loadPromise: Promise<DBShape> | null = null;
 
 async function ensureDir() {
   await fs.mkdir(DATA_DIR, { recursive: true });
@@ -64,15 +65,30 @@ async function ensureDir() {
 
 async function load(): Promise<DBShape> {
   if (cache) return cache;
-  await ensureDir();
-  try {
-    const raw = await fs.readFile(DB_FILE, "utf8");
-    cache = { ...empty, ...(JSON.parse(raw) as DBShape) };
-  } catch {
-    cache = structuredClone(empty);
-    await persist(cache);
+
+  // Share initialization across concurrent requests to prevent .tmp rename races.
+  if (!loadPromise) {
+    loadPromise = (async () => {
+      await ensureDir();
+      try {
+        const raw = await fs.readFile(DB_FILE, "utf8");
+        cache = { ...empty, ...(JSON.parse(raw) as DBShape) };
+        return cache;
+      } catch (error) {
+        if ((error as { code?: string }).code !== "ENOENT") throw error;
+        const initial = structuredClone(empty);
+        await persist(initial);
+        return initial;
+      }
+    })();
   }
-  return cache;
+
+  try {
+    return await loadPromise;
+  } catch (error) {
+    loadPromise = null;
+    throw error;
+  }
 }
 
 async function persist(db: DBShape) {
